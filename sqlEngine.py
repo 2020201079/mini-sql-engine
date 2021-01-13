@@ -40,6 +40,6 @@ def parseMetadataFile(path):
 
 def main():
     tables = parseMetadataFile("files/metadata.txt")
-
+    
 if __name__ == "__main__":
     main()
