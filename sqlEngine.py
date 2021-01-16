@@ -3,6 +3,8 @@ import sys
 import sqlparse
 from sqlparse.tokens import Keyword, DML
 from parsedQuery import parsedQuery
+import csv
+from collections import defaultdict
 
 def printError(error):
     print(error)
@@ -42,7 +44,7 @@ def parseMetadataFile(path):
         metaFile.close()
         return tables
 
-def tablesExist(tableNames, tablesFromMeta ):
+def tablesExistInMeta(tableNames, tablesFromMeta ):
     for tab in tableNames:
         found = False
         for t in tablesFromMeta:
@@ -50,11 +52,11 @@ def tablesExist(tableNames, tablesFromMeta ):
                 found = True
                 break
         if(found == False):
-            printError("Didnt find table " + t.name)
+            printError("Didnt find table " + tab )
             return False
     return True
 
-def colExist(colNamesQuery,tablesFromMeta):
+def colExistInMeta(colNamesQuery,tablesFromMeta):
     for colName in colNamesQuery:
         found = False
         for t in tablesFromMeta:
@@ -66,29 +68,51 @@ def colExist(colNamesQuery,tablesFromMeta):
             return False
     return True
 
+def getColums(t,tableFromMetaData):
+    for table in tableFromMetaData:
+        if(table.name == t):
+            return table.attributes
+    printError("error in getting col data of table "+ t)
+
+def joinTables(tableNames,tableFromMetaData):
+    folderPath = "files/"
+    tableDictLists = []
+    for t in tableNames:
+        if not os.path.exists(folderPath+t+'.csv'):
+            printError("table csv does not exists of "+ t)
+        colums = getColums(t,tableFromMetaData)
+        tableDict = defaultdict(list)
+        csvFile = open(folderPath+t+'.csv','r')
+        csvReader = csv.reader(csvFile)
+        for line in csvReader:
+            line = [int(l) for l in line]
+            if(len(line) != len(colums)):
+                printError("number of csv colums does not match with metadata colums")
+            for i in range(len(colums)):
+                tableDict[colums[i]].append(line[i])
+        csvFile.close()
+        tableDictLists.append(tableDict)
+    print(tableDictLists[0])
+    print(tableDictLists[1])
+
+
 def main():
-    tables = parseMetadataFile("files/metadata.txt")
+    tablesFromMetaData = parseMetadataFile("files/metadata.txt")
+
     #sqlQuery = input()
     sqlQuery = "select A, D from table1, table2 where a=10 AND b=20 order by a ASC group by c"
 
     pq = parsedQuery(sqlQuery)
-    print("printing tables :")
-    for tab in pq.tables:
-        print(tab)
-    
-    print("printing colums :")
-    for col in pq.colums:
-        print(col)
 
-    if not tablesExist(pq.tables,tables):
+    if not tablesExistInMeta(pq.tables,tablesFromMetaData):
         printError("One of the table does not exists ")
-    else:
-        print("All tables exists ")
     
-    if not colExist(pq.colums,tables):
+    if not colExistInMeta(pq.colums,tablesFromMetaData):
         printError("One of the col does not exists ")
-    else:
-        print("All cols exist")
+    
+    finalTable = joinTables(pq.tables,tablesFromMetaData)
+    
+
 
     
 if __name__ == "__main__":
