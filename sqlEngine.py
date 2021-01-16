@@ -76,9 +76,7 @@ def getColums(t,tableFromMetaData):
 
 def joinTablesHelper(dic1,dic2):
     keys1 = list(dic1.keys())
-    print(keys1)
     keys2 = list(dic2.keys())
-    print(keys2)
     len1 = len(dic1[keys1[0]])
     len2 = len(dic2[keys2[0]])
     ans = defaultdict(list)
@@ -110,19 +108,33 @@ def joinTables(tableNames,tableFromMetaData):
                 tableDict[colums[i]].append(line[i])
         csvFile.close()
         tableDictLists.append(tableDict)
-    print(tableDictLists[0])
-    print(tableDictLists[1])
-    #ans = joinTablesHelper(tableDictLists[0],tableDictLists[1])
     ans = tableDictLists[0]
     for i in range(1,len(tableDictLists)):
         ans = joinTablesHelper(ans,tableDictLists[i])
+    return ans
 
+def selectColsFromTable(table,cols):
+    ans = defaultdict(list)
+    for c in cols:
+        ans[c] = table[c]
+    return ans
+
+def printTable(table):
+    keys = list(table.keys())
+    length = len(table[keys[0]])
+    for k in keys:
+        print(k,end=" ")
+    print()
+    for i in range(length):
+        for k in keys:
+            print(table[k][i],end=" ")
+        print()
 
 def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select A, D from a, b,c where a=10 AND b=20 order by a ASC group by c"
+    sqlQuery = "select A, D,G from a, b,c where a=10 AND b=20 order by a ASC group by c"
 
     pq = parsedQuery(sqlQuery)
 
@@ -133,6 +145,10 @@ def main():
         printError("One of the col does not exists ")
     
     tablesAfterJoin = joinTables(pq.tables,tablesFromMetaData)
+
+    tableAfterSelectingCols = selectColsFromTable(tablesAfterJoin,pq.colums)
+    
+    printTable(tableAfterSelectingCols)
     
 
 
