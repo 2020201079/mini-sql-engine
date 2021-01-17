@@ -3,6 +3,10 @@ import os
 import sys
 from sqlparse.tokens import Keyword, DML
 
+def printError(error):
+    print(error)
+    exit()
+
 class parsedQuery:
     tables = []
     colums = []
@@ -11,6 +15,8 @@ class parsedQuery:
     isFromPresent = False
     isGroupByPresent = False
     isOrderByPresent = False
+    comparisonsInWhere = []
+    LogicOperatorInWhere = ""
     __columNames = ""
     __tableNames = ""
     def __init__(self,query):
@@ -26,7 +32,7 @@ class parsedQuery:
         i=1
         while i<len(tokenList):
             if(tokenList[i].ttype is sqlparse.tokens.Keyword and tokenList[i].value.upper() == "FROM"):
-                break;
+                break
             elif(tokenList[i].ttype is not sqlparse.tokens.Text.Whitespace):
                 self.__columNames += tokenList[i].value
             i = i+1
@@ -67,5 +73,34 @@ class parsedQuery:
             return True
         return False
     def __parseWhereCondition(self,token):
-        print()
-        #print("tokens in where class (still not implemented): ",token.tokens)
+        isLogicOperatorPresent = False
+        
+        tokenList = token.tokens
+        for t in tokenList:
+            if(t.ttype == sqlparse.tokens.Keyword and t.value.upper() == "AND"):
+                isLogicOperatorPresent = True
+                self.LogicOperatorInWhere = "AND"
+                break
+            elif(t.ttype == sqlparse.tokens.Keyword and t.value.upper() == "OR"):
+                isLogicOperatorPresent = True
+                self.LogicOperatorInWhere = "OR"
+                break
+        
+        if(isLogicOperatorPresent):
+            if len(tokenList)<7:
+                printError("Error in syntax of where condition")
+            if not isinstance(tokenList[2],sqlparse.sql.Comparison):
+                printError("Error in syntax of where condition")
+            self.comparisonsInWhere.append(tokenList[2].value)
+            if not isinstance(tokenList[6],sqlparse.sql.Comparison):
+                printError("Error in syntax of where condition")
+            self.comparisonsInWhere.append(tokenList[6].value)
+        else:
+            if len(tokenList)<3:
+                printError("Error in syntax of where condition")
+            if not isinstance(tokenList[2],sqlparse.sql.Comparison):
+                printError("Error in syntax of where condition")
+            self.comparisonsInWhere.append(tokenList[2].value)
+        
+        for c in self.comparisonsInWhere:
+            print(c)

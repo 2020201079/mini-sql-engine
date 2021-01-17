@@ -88,8 +88,6 @@ def joinTablesHelper(dic1,dic2):
                 ans[keys2[k2]].append(dic2[keys2[k2]][j])
     return ans
 
-
-
 def joinTables(tableNames,tableFromMetaData):
     folderPath = "files/"
     tableDictLists = []
@@ -119,6 +117,8 @@ def selectColsFromTable(table,cols):
         ans[c] = table[c]
     return ans
 
+
+
 def printTable(table):
     keys = list(table.keys())
     length = len(table[keys[0]])
@@ -134,7 +134,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select A, D,G from a, b,c where a=10 AND b=20 order by a ASC group by c"
+    sqlQuery = "select A, D,G from a, b,c order by a ASC group by c"
 
     pq = parsedQuery(sqlQuery)
 
@@ -147,11 +147,10 @@ def main():
     tablesAfterJoin = joinTables(pq.tables,tablesFromMetaData)
 
     tableAfterSelectingCols = selectColsFromTable(tablesAfterJoin,pq.colums)
+    if (pq.isWherePresent):
+        pass
     
-    printTable(tableAfterSelectingCols)
-    
-
-
+    #printTable(tableAfterSelectingCols)
     
 if __name__ == "__main__":
     main()
