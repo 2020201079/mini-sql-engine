@@ -8,8 +8,10 @@ def printError(error):
     exit()
 
 class parsedQuery:
+    colToFunc = {}
     tables = []
     colums = []
+    groupByCol = ""
     isWherePresent = False
     isSelectPresent = False
     isFromPresent = False
@@ -34,11 +36,22 @@ class parsedQuery:
             if(tokenList[i].ttype is sqlparse.tokens.Keyword and tokenList[i].value.upper() == "FROM"):
                 break
             elif(tokenList[i].ttype is not sqlparse.tokens.Text.Whitespace):
-                self.__columNames += tokenList[i].value
+                self.__columNames += str(tokenList[i].value)
             i = i+1
-        self.colums = self.__columNames.split(",")
-        self.colums = [x.strip() for x in self.colums]
-        
+        print(self.__columNames)
+        colIdentifier = self.__columNames.split(",")
+        colIdentifier = [c.strip() for c in colIdentifier]
+        for c in colIdentifier:
+            if(self.__isFunc(c)):
+                funcName = self.__getFuncName(c)
+                if not self.__isValidFunc(funcName):
+                    printError("Do not support this function : "+ funcName)
+                colName = self.__getColName(c)
+                self.colums.append(colName)
+                self.colToFunc[colName] = funcName.upper()
+            else:
+                self.colums.append(c)
+                self.colToFunc[c] = ""
 
         #######getting table names here
         i=1
@@ -54,6 +67,69 @@ class parsedQuery:
             i = i+1
         self.tables = self.__tableNames.split(",")
         self.tables = [x.strip() for x in self.tables]
+
+        ## getting group by col here
+        if(self.isGroupByPresent):
+            found = False
+            for token in tokenList:
+                if(token.ttype is sqlparse.tokens.Keyword and token.value.upper() == "GROUP BY"):
+                    found = True
+                    continue
+                if(found):
+                    if(token.ttype is sqlparse.tokens.Keyword or self.__isWhereClass(token)):
+                        break
+                    if(token.ttype is not sqlparse.tokens.Text.Whitespace):
+                        if(len(token.value.split(",")) > 1):
+                            printError("Group by is performed by one col only not by "+token.value)
+                        if(len(token.value.split(" ")) > 1):
+                            printError("Group by is performed by one col only not by "+token.value)
+                        self.groupByCol = str(token.value)
+                        print("group by identifier",str(token.value))
+
+        ## getting order by col here
+        if(self.isOrderByPresent):
+            found = False
+            for token in tokenList:
+                if(token.ttype is sqlparse.tokens.Keyword and token.value.upper() == "ORDER BY"):
+                    found = True
+                    continue
+                if(found):
+                    if(token.ttype is sqlparse.tokens.Keyword or self.__isWhereClass(token)):
+                        break
+                    if(token.ttype is not sqlparse.tokens.Text.Whitespace):
+                        if(len(token.value.split(",")) > 1):
+                            printError("Order by is performed by one col only not by "+token.value)
+                        if(len(token.value.split(" ")) > 1):
+                            printError("Order by is performed by one col only not by "+token.value)
+                        self.orderByCol = str(token.value)
+                        print("order by identifier",str(token.value))
+                        
+
+    def __isFunc(self,name):
+        openbracket = name.find('(')
+        if(openbracket==-1 or openbracket==0):
+            return False
+        closebracket = name.find(')')
+        if(closebracket==-1 or (closebracket<openbracket)):
+            return False
+        return True
+    
+    def __getFuncName(self,name):
+        openbracket = name.find('(')
+        return name[0:openbracket]
+    def __getColName(self,name):
+        openbracket = name.find('(')
+        closebracket = name.find(')')
+        return name[openbracket+1:closebracket]
+    
+    def __isValidFunc(self,name):
+        validNames = ["sum","average","max","min","count"]
+        for n in validNames:
+            if(n.upper() == name.upper()):
+                return True
+        return False
+
+
 
     def __checkTokens(self,tokenList):
         for token in tokenList:
@@ -78,7 +154,6 @@ class parsedQuery:
         tokenList = token.tokens
         countCond = 0
         for t in tokenList:
-            print(t.ttype,t.value)
             if(t.ttype == sqlparse.tokens.Keyword):
                 if not (t.value.upper() == "AND" or t.value.upper() == "OR" or t.value.upper() == "WHERE"):
                     printError("syntax error is where "+ t.value)
@@ -108,6 +183,3 @@ class parsedQuery:
             if not isinstance(tokenList[2],sqlparse.sql.Comparison):
                 printError("Error in syntax of where condition")
             self.comparisonsInWhere.append(tokenList[2].value)
-        
-        for c in self.comparisonsInWhere:
-            print(c)

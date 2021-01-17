@@ -111,12 +111,53 @@ def joinTables(tableNames,tableFromMetaData):
         ans = joinTablesHelper(ans,tableDictLists[i])
     return ans
 
-def selectColsFromTable(table,cols):
-    ans = defaultdict(list)
-    for c in cols:
-        ans[c] = table[c]
-    return ans
+def allColsHaveAggregate(pq):
+    print(pq.colToFunc)
+    for col in pq.colums:
+        if pq.colToFunc[col] == "":
+            return False
+    return True
 
+def noneHaveAggregate(pq):
+    for col in pq.colums:
+        if pq.colToFunc[col] != "":
+            return False
+    return True
+
+def evaluate(nums,funcName):
+    if(funcName.upper() == "MAX"):
+        return max(nums)
+    if(funcName.upper() == "MIN"):
+        return min(nums)
+    if(funcName.upper() == "COUNT"):
+        return len(nums)
+    if(funcName.upper() == "SUM"):
+        return sum(nums)
+    if(funcName.upper() == "AVERAGE"):
+        return sum(nums)/len(nums)
+    else:
+        printError("Invalid function name : "+ funcName)
+
+def selectColsFromTable(table,pq):
+    if not pq.isGroupByPresent: 
+        #group by is not present
+        if allColsHaveAggregate(pq):
+            print("enterred all have aggregate")
+            ans = defaultdict(list)
+            for c in pq.colums:
+                ans[c] = [evaluate(table[c],pq.colToFunc[c])]
+            return ans
+        elif noneHaveAggregate(pq):
+            print("entered none have aggregate")
+            ans = defaultdict(list)
+            for c in pq.colums:
+                ans[c] = table[c]
+            return ans
+        else:
+            printError("without group by all should have aggregate func or none should have aggregate func")
+    else:
+        pass
+        #group by clause is present
 
 def parseCondition(condition):
     ans = []
@@ -129,7 +170,6 @@ def parseCondition(condition):
             ans.append(op.strip())
             ans.append(col2.strip())
             break
-    print(ans)
     return ans
 
 def checkValid(currVal,operator,value):
@@ -150,8 +190,8 @@ def checkValid(currVal,operator,value):
 def applyWhereCondition(pq,table):
     cols = list(table.keys())
     tableLen = len(table[cols[0]])
-    print(cols)
     conditionsListAsString = pq.comparisonsInWhere
+    print(conditionsListAsString)
     logicOperator = pq.LogicOperatorInWhere
     ans = defaultdict(list)
     if(logicOperator == ""):
@@ -161,13 +201,25 @@ def applyWhereCondition(pq,table):
         colName = conditionList[0].strip()
         operator = conditionList[1]
         value = conditionList[2]
-        if not colName in cols:
-            printError("Col name in where is not in the joined table col name : "+colName)
-        for i in range(tableLen):
-            currVal = table[colName][i]
-            if(checkValid(currVal,operator,value)):
-                for c in cols:
-                    ans[c].append(table[c][i])
+        if(value.isdigit()):
+            if not colName in cols:
+                printError("Col name in where is not in the joined table col name : "+colName)
+            for i in range(tableLen):
+                currVal = table[colName][i]
+                if(checkValid(currVal,operator,value)):
+                    for c in cols:
+                        ans[c].append(table[c][i])
+        else:
+            if not colName in cols:
+                printError("Col name in where is not in the joined table col name : "+colName)
+            if not value in cols:
+                printError("Col name in where is not in the joined table col name : "+value)
+            for i in range(tableLen):
+                currVal = table[colName][i]
+                currVal2 = table[value][i]
+                if(checkValid(currVal,operator,currVal2)):
+                    for c in cols:
+                        ans[c].append(table[c][i])
         return ans
 
     elif(logicOperator.upper() == "AND"):
@@ -179,6 +231,9 @@ def applyWhereCondition(pq,table):
         value1 = conditionList1[2]
         if not colName1 in cols:
             printError("Col name in where is not in the joined table col name : "+colName1)
+        if not (value1.isdigit()):
+            if not value1 in cols:
+                printError("Col name in where is not in the joined table col name : "+value1)
 
         conditionList2 = parseCondition(conditionsListAsString[1])
         colName2 = conditionList2[0].strip()
@@ -186,13 +241,29 @@ def applyWhereCondition(pq,table):
         value2 = conditionList2[2]
         if not colName2 in cols:
             printError("Col name in where is not in the joined table col name : "+colName2)
+        if not (value2.isdigit()):
+            if not value2 in cols:
+                printError("Col name in where is not in the joined table col name : "+value2)
 
         for i in range(tableLen):
             currVal1 = table[colName1][i]
             currVal2 = table[colName2][i]
-            if(checkValid(currVal1,operator1,value1) and checkValid(currVal2,operator2,value2)):
-                for c in cols:
-                    ans[c].append(table[c][i])
+            if(value1.isdigit() and value2.isdigit()):
+                if(checkValid(currVal1,operator1,value1) and checkValid(currVal2,operator2,value2)):
+                    for c in cols:
+                        ans[c].append(table[c][i])
+            elif(value1.isdigit() and (not value2.isdigit()) ):
+                if(checkValid(currVal1,operator1,value1) and checkValid(currVal2,operator2,table[value2][i])):
+                    for c in cols:
+                        ans[c].append(table[c][i])
+            elif((not value1.isdigit()) and (not value2.isdigit()) ):
+                if(checkValid(currVal1,operator1,table[value1][i]) and checkValid(currVal2,operator2,table[value2][i])):
+                    for c in cols:
+                        ans[c].append(table[c][i])
+            elif((not value1.isdigit()) and (value2.isdigit()) ):
+                if(checkValid(currVal1,operator1,table[value1][i]) and checkValid(currVal2,operator2,value2)):
+                    for c in cols:
+                        ans[c].append(table[c][i])
         return ans
 
     elif(logicOperator.upper() == "OR"):
@@ -204,6 +275,9 @@ def applyWhereCondition(pq,table):
         value1 = conditionList1[2]
         if not colName1 in cols:
             printError("Col name in where is not in the joined table col name : "+colName1)
+        if not (value1.isdigit()):
+            if not value1 in cols:
+                printError("Col name in where is not in the joined table col name : "+value1)
 
         conditionList2 = parseCondition(conditionsListAsString[1])
         colName2 = conditionList2[0].strip()
@@ -211,20 +285,37 @@ def applyWhereCondition(pq,table):
         value2 = conditionList2[2]
         if not colName2 in cols:
             printError("Col name in where is not in the joined table col name : "+colName2)
+        if not (value2.isdigit()):
+            if not value2 in cols:
+                printError("Col name in where is not in the joined table col name : "+value2)
 
         for i in range(tableLen):
             currVal1 = table[colName1][i]
             currVal2 = table[colName2][i]
-            if(checkValid(currVal1,operator1,value1) or checkValid(currVal2,operator2,value2)):
-                for c in cols:
-                    ans[c].append(table[c][i])
+            if(value1.isdigit() and value2.isdigit()):
+                if(checkValid(currVal1,operator1,value1) or checkValid(currVal2,operator2,value2)):
+                    for c in cols:
+                        ans[c].append(table[c][i])
+            elif(value1.isdigit() and (not value2.isdigit()) ):
+                if(checkValid(currVal1,operator1,value1) or checkValid(currVal2,operator2,table[value2][i])):
+                    for c in cols:
+                        ans[c].append(table[c][i])
+            elif((not value1.isdigit()) and (not value2.isdigit()) ):
+                if(checkValid(currVal1,operator1,table[value1][i]) or checkValid(currVal2,operator2,table[value2][i])):
+                    for c in cols:
+                        ans[c].append(table[c][i])
+            elif((not value1.isdigit()) and (value2.isdigit()) ):
+                if(checkValid(currVal1,operator1,table[value1][i]) or checkValid(currVal2,operator2,value2)):
+                    for c in cols:
+                        ans[c].append(table[c][i])
         return ans
     else:
         printError("Operator not supported " + logicOperator)
         
-
-
 def printTable(table):
+    if table is None:
+        print("Table is empty ")
+        return
     keys = list(table.keys())
     if len(keys) == 0:
         print("Table is empty ")
@@ -242,7 +333,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select A, D,G from a, b,c  where F = 15 and G = 16 order by a ASC group by c"
+    sqlQuery = "select A,B,C,D,E,F,G from a,b,c where F=C or G=16 "
 
     pq = parsedQuery(sqlQuery)
 
@@ -257,9 +348,7 @@ def main():
     if(pq.isWherePresent):
         tableAfterWhere = applyWhereCondition(pq,tablesAfterJoin)
 
-    printTable(tableAfterWhere)
-
-    tableAfterSelectingCols = selectColsFromTable(tableAfterWhere,pq.colums)
+    tableAfterSelectingCols = selectColsFromTable(tableAfterWhere,pq)
     
     printTable(tableAfterSelectingCols)
     
