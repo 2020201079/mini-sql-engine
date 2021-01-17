@@ -118,6 +118,27 @@ def selectColsFromTable(table,cols):
     return ans
 
 
+def parseCondition(condition):
+    ans = []
+    operators = ['>','<','<=','>=','=']
+    for op in operators:
+        if(condition.find(op) != -1):
+            col1 = condition[0:condition.find(op)]
+            col2 = condition[condition.find(op)+len(op):]
+            ans.append(col1)
+            ans.append(op)
+            ans.append(col2)
+            break
+    print(ans)
+    return ans
+
+def applyWhereCondition(pq,table):
+    cols = table.keys()
+    conditionsListAsString = pq.comparisonsInWhere
+    logicOperator = pq.LogicOperatorInWhere
+    if(logicOperator == ""):
+        conditionList = parseCondition(conditionsListAsString[0])
+
 
 def printTable(table):
     keys = list(table.keys())
@@ -134,7 +155,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select A, D,G from a, b,c order by a ASC group by c"
+    sqlQuery = "select A, D,G from a, b,c  where A = 10 order by a ASC group by c"
 
     pq = parsedQuery(sqlQuery)
 
@@ -145,6 +166,9 @@ def main():
         printError("One of the col does not exists ")
     
     tablesAfterJoin = joinTables(pq.tables,tablesFromMetaData)
+
+    if(pq.isWherePresent):
+        applyWhereCondition(pq,tablesAfterJoin)
 
     tableAfterSelectingCols = selectColsFromTable(tablesAfterJoin,pq.colums)
     if (pq.isWherePresent):
