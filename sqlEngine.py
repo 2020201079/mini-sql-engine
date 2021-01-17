@@ -125,23 +125,110 @@ def parseCondition(condition):
         if(condition.find(op) != -1):
             col1 = condition[0:condition.find(op)]
             col2 = condition[condition.find(op)+len(op):]
-            ans.append(col1)
-            ans.append(op)
-            ans.append(col2)
+            ans.append(col1.strip())
+            ans.append(op.strip())
+            ans.append(col2.strip())
             break
     print(ans)
     return ans
 
+def checkValid(currVal,operator,value):
+    value = int(value)
+    if(operator == "<"):
+        return currVal < value
+    elif(operator == ">"):
+        return currVal > value
+    elif(operator == "<="):
+        return currVal <= value
+    elif(operator == ">="):
+        return currVal >= value
+    elif(operator == "="):
+        return currVal == value
+    else:
+        printError("Operator is not valid : " + operator)
+
 def applyWhereCondition(pq,table):
-    cols = table.keys()
+    cols = list(table.keys())
+    tableLen = len(table[cols[0]])
+    print(cols)
     conditionsListAsString = pq.comparisonsInWhere
     logicOperator = pq.LogicOperatorInWhere
+    ans = defaultdict(list)
     if(logicOperator == ""):
+        if(len(conditionsListAsString) != 1):
+            printError("Where condition syntax error")
         conditionList = parseCondition(conditionsListAsString[0])
+        colName = conditionList[0].strip()
+        operator = conditionList[1]
+        value = conditionList[2]
+        if not colName in cols:
+            printError("Col name in where is not in the joined table col name : "+colName)
+        for i in range(tableLen):
+            currVal = table[colName][i]
+            if(checkValid(currVal,operator,value)):
+                for c in cols:
+                    ans[c].append(table[c][i])
+        return ans
+
+    elif(logicOperator.upper() == "AND"):
+        if(len(conditionsListAsString) != 2):
+            printError("Where condition syntax error")
+        conditionList1 = parseCondition(conditionsListAsString[0])
+        colName1 = conditionList1[0].strip()
+        operator1 = conditionList1[1]
+        value1 = conditionList1[2]
+        if not colName1 in cols:
+            printError("Col name in where is not in the joined table col name : "+colName1)
+
+        conditionList2 = parseCondition(conditionsListAsString[1])
+        colName2 = conditionList2[0].strip()
+        operator2 = conditionList2[1]
+        value2 = conditionList2[2]
+        if not colName2 in cols:
+            printError("Col name in where is not in the joined table col name : "+colName2)
+
+        for i in range(tableLen):
+            currVal1 = table[colName1][i]
+            currVal2 = table[colName2][i]
+            if(checkValid(currVal1,operator1,value1) and checkValid(currVal2,operator2,value2)):
+                for c in cols:
+                    ans[c].append(table[c][i])
+        return ans
+
+    elif(logicOperator.upper() == "OR"):
+        if(len(conditionsListAsString) != 2):
+            printError("Where condition syntax error")
+        conditionList1 = parseCondition(conditionsListAsString[0])
+        colName1 = conditionList1[0].strip()
+        operator1 = conditionList1[1]
+        value1 = conditionList1[2]
+        if not colName1 in cols:
+            printError("Col name in where is not in the joined table col name : "+colName1)
+
+        conditionList2 = parseCondition(conditionsListAsString[1])
+        colName2 = conditionList2[0].strip()
+        operator2 = conditionList2[1]
+        value2 = conditionList2[2]
+        if not colName2 in cols:
+            printError("Col name in where is not in the joined table col name : "+colName2)
+
+        for i in range(tableLen):
+            currVal1 = table[colName1][i]
+            currVal2 = table[colName2][i]
+            if(checkValid(currVal1,operator1,value1) or checkValid(currVal2,operator2,value2)):
+                for c in cols:
+                    ans[c].append(table[c][i])
+        return ans
+    else:
+        printError("Operator not supported " + logicOperator)
+        
 
 
 def printTable(table):
     keys = list(table.keys())
+    if len(keys) == 0:
+        print("Table is empty ")
+        return
     length = len(table[keys[0]])
     for k in keys:
         print(k,end=" ")
@@ -155,7 +242,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select A, D,G from a, b,c  where A = 10 order by a ASC group by c"
+    sqlQuery = "select A, D,G from a, b,c  where F = 15 and G = 16 order by a ASC group by c"
 
     pq = parsedQuery(sqlQuery)
 
@@ -168,13 +255,13 @@ def main():
     tablesAfterJoin = joinTables(pq.tables,tablesFromMetaData)
 
     if(pq.isWherePresent):
-        applyWhereCondition(pq,tablesAfterJoin)
+        tableAfterWhere = applyWhereCondition(pq,tablesAfterJoin)
 
-    tableAfterSelectingCols = selectColsFromTable(tablesAfterJoin,pq.colums)
-    if (pq.isWherePresent):
-        pass
+    printTable(tableAfterWhere)
+
+    tableAfterSelectingCols = selectColsFromTable(tableAfterWhere,pq.colums)
     
-    #printTable(tableAfterSelectingCols)
+    printTable(tableAfterSelectingCols)
     
 if __name__ == "__main__":
     main()

@@ -76,16 +76,23 @@ class parsedQuery:
         isLogicOperatorPresent = False
         
         tokenList = token.tokens
+        countCond = 0
         for t in tokenList:
+            print(t.ttype,t.value)
+            if(t.ttype == sqlparse.tokens.Keyword):
+                if not (t.value.upper() == "AND" or t.value.upper() == "OR" or t.value.upper() == "WHERE"):
+                    printError("syntax error is where "+ t.value)
             if(t.ttype == sqlparse.tokens.Keyword and t.value.upper() == "AND"):
                 isLogicOperatorPresent = True
                 self.LogicOperatorInWhere = "AND"
-                break
+                countCond = countCond +1
             elif(t.ttype == sqlparse.tokens.Keyword and t.value.upper() == "OR"):
                 isLogicOperatorPresent = True
                 self.LogicOperatorInWhere = "OR"
-                break
+                countCond = countCond +1
         
+        if(countCond >1):
+            printError("Only one OR or AND is supported")
         if(isLogicOperatorPresent):
             if len(tokenList)<7:
                 printError("Error in syntax of where condition")
