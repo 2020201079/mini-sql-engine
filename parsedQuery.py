@@ -17,6 +17,7 @@ class parsedQuery:
     isFromPresent = False
     isGroupByPresent = False
     isOrderByPresent = False
+    isDistinctPresent = False
     comparisonsInWhere = []
     LogicOperatorInWhere = ""
     __columNames = ""
@@ -35,10 +36,9 @@ class parsedQuery:
         while i<len(tokenList):
             if(tokenList[i].ttype is sqlparse.tokens.Keyword and tokenList[i].value.upper() == "FROM"):
                 break
-            elif(tokenList[i].ttype is not sqlparse.tokens.Text.Whitespace):
+            elif(tokenList[i].ttype is not sqlparse.tokens.Text.Whitespace and (tokenList[i].value.upper() != "DISTINCT" )):
                 self.__columNames += str(tokenList[i].value)
             i = i+1
-        print(self.__columNames)
         colIdentifier = self.__columNames.split(",")
         colIdentifier = [c.strip() for c in colIdentifier]
         for c in colIdentifier:
@@ -84,7 +84,6 @@ class parsedQuery:
                         if(len(token.value.split(" ")) > 1):
                             printError("Group by is performed by one col only not by "+token.value)
                         self.groupByCol = str(token.value)
-                        print("group by identifier",str(token.value))
 
         ## getting order by col here
         if(self.isOrderByPresent):
@@ -102,8 +101,6 @@ class parsedQuery:
                         if(len(token.value.split(" ")) > 1):
                             printError("Order by is performed by one col only not by "+token.value)
                         self.orderByCol = str(token.value)
-                        print("order by identifier",str(token.value))
-                        
 
     def __isFunc(self,name):
         openbracket = name.find('(')
@@ -135,6 +132,8 @@ class parsedQuery:
         for token in tokenList:
             if(token.ttype is sqlparse.tokens.Keyword and token.value.upper() == "FROM"):
                 self.isFromPresent = True
+            if(token.ttype is sqlparse.tokens.Keyword and token.value.upper() == "DISTINCT"):
+                self.isDistinctPresent = True
             if(token.ttype is sqlparse.tokens.Keyword and token.value.upper() == "SELECT"):
                 self.isSelectPresent = True
             if(token.ttype is sqlparse.tokens.Keyword and token.value.upper() == "GROUP BY"):

@@ -20,7 +20,6 @@ def parseMetadataFile(path):
     if not os.path.exists(path):
         printError("metadata file does not exists")
     else:
-        print("meta file exists ")
         metaFile = open(path,'r')
         while True:
             line = metaFile.readline().strip()
@@ -112,7 +111,6 @@ def joinTables(tableNames,tableFromMetaData):
     return ans
 
 def allColsHaveAggregate(pq):
-    print(pq.colToFunc)
     for col in pq.colums:
         if pq.colToFunc[col] == "":
             return False
@@ -139,16 +137,16 @@ def evaluate(nums,funcName):
         printError("Invalid function name : "+ funcName)
 
 def selectColsFromTable(table,pq):
+    if table is None:
+        return
     if not pq.isGroupByPresent: 
         #group by is not present
         if allColsHaveAggregate(pq):
-            print("enterred all have aggregate")
             ans = defaultdict(list)
             for c in pq.colums:
                 ans[c] = [evaluate(table[c],pq.colToFunc[c])]
             return ans
         elif noneHaveAggregate(pq):
-            print("entered none have aggregate")
             ans = defaultdict(list)
             for c in pq.colums:
                 ans[c] = table[c]
@@ -156,8 +154,7 @@ def selectColsFromTable(table,pq):
         else:
             printError("without group by all should have aggregate func or none should have aggregate func")
     else:
-        pass
-        #group by clause is present
+        return table # group by function has already selected cols
 
 def parseCondition(condition):
     ans = []
@@ -188,10 +185,11 @@ def checkValid(currVal,operator,value):
         printError("Operator is not valid : " + operator)
 
 def applyWhereCondition(pq,table):
+    if(pq.isWherePresent == False):
+        return table
     cols = list(table.keys())
     tableLen = len(table[cols[0]])
     conditionsListAsString = pq.comparisonsInWhere
-    print(conditionsListAsString)
     logicOperator = pq.LogicOperatorInWhere
     ans = defaultdict(list)
     if(logicOperator == ""):
@@ -313,6 +311,8 @@ def applyWhereCondition(pq,table):
         printError("Operator not supported " + logicOperator)
 
 def applyGroupBy(pq,table):
+    if(pq.isGroupByPresent == False):
+        return table
     colToGroup = pq.groupByCol
     colToSelect = pq.colums
     if not (colToGroup in table.keys()):
@@ -322,12 +322,65 @@ def applyGroupBy(pq,table):
         if c != colToGroup:
             if(pq.colToFunc[c] == ""):
                 printError("With group by the colum should have an aggregate function "+ c)
-    ans = {}
+    
+    ans = defaultdict(dict)
     for i in range(tableLen):
         currValue = table[colToGroup][i]
         for k in colToSelect:
-            ans[currValue][k].append(table[k][i])
-    print(ans)
+            currdic = ans[currValue]
+            if k in currdic.keys():
+                ans[currValue][k].append(table[k][i])
+            else:
+                ans[currValue][k] = [table[k][i]]
+    finalAns = defaultdict(list)
+    for k in ans.keys():
+        dic = ans[k]
+        for k1 in dic.keys():
+            if(k1 == colToGroup):
+                finalAns[k1].append(k)
+            else:
+                finalAns[k1].append(evaluate(dic[k1],pq.colToFunc[k1]))
+    return finalAns
+
+def applyOrderBy(table,pq):
+    if(pq.isOrderByPresent == False):
+        return table
+    orderByCol = pq.orderByCol
+    if orderByCol not in table.keys():
+        printError("Order by colum is not selected : "+ orderByCol)
+    listToSort = table[orderByCol]
+    listOfTuple = []
+    for i in range(len(listToSort)):
+        listOfTuple.append((listToSort[i],i))
+    listOfTuple.sort()
+    ans = defaultdict(list)
+    for t in listOfTuple:
+        index = t[1]
+        for k in table.keys():
+            ans[k].append(table[k][index])
+    return ans
+
+def applyDistinct(table,pq):
+    if (pq.isDistinctPresent == False):
+        return table
+    colNames = list(table.keys())
+    if(len(colNames) <1):
+        print("Table is empty")
+        return
+    tableLen = len(table[colNames[0]])
+    s = set()
+    ans = defaultdict(list)
+    for i in range(tableLen):
+        currlist = []
+        for k in table.keys():
+            currlist.append(table[k][i])
+        currTuple = tuple(currlist)
+        if currTuple not in s:
+            s.add(currTuple)
+            for k1 in table.keys():
+                ans[k1].append(table[k1][i])
+    return ans
+
 
 def printTable(table):
     if table is None:
@@ -350,7 +403,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select max(A),max(B),min(C) from a,b,c where F=C or G=16 group by A"
+    sqlQuery = "select distinct A,B,C from a,b,c where F=C or G=16"
 
     pq = parsedQuery(sqlQuery)
 
@@ -360,20 +413,20 @@ def main():
     if not colExistInMeta(pq.colums,tablesFromMetaData):
         printError("One of the col does not exists ")
     
-    tablesAfterJoin = joinTables(pq.tables,tablesFromMetaData)
-    currTable = tablesAfterJoin
+    currTable = joinTables(pq.tables,tablesFromMetaData)
 
-    if(pq.isWherePresent):
-        tableAfterWhere = applyWhereCondition(pq,tablesAfterJoin)
-        currTable = tableAfterWhere
-    
-    if(pq.isGroupByPresent):
-        tableAfterGroupBy = applyGroupBy(pq,currTable)
-        currTable = tableAfterGroupBy
+    currTable = applyWhereCondition(pq,currTable)
 
-    tableAfterSelectingCols = selectColsFromTable(tableAfterWhere,pq)
+    currTable = applyGroupBy(pq,currTable)
+
+    currTable = selectColsFromTable(currTable,pq)
+
+    #add disticnt here 
+    currTable = applyDistinct(currTable,pq)
+
+    currTable = applyOrderBy(currTable,pq)
     
-    printTable(tableAfterSelectingCols)
+    printTable(currTable)
     
 if __name__ == "__main__":
     main()
