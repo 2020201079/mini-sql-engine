@@ -57,6 +57,8 @@ def tablesExistInMeta(tableNames, tablesFromMeta ):
 
 def colExistInMeta(colNamesQuery,tablesFromMeta):
     for colName in colNamesQuery:
+        if(colName.strip() == "*"):
+            continue
         found = False
         for t in tablesFromMeta:
             if colName in t.attributes:
@@ -137,10 +139,18 @@ def evaluate(nums,funcName):
         printError("Invalid function name : "+ funcName)
 
 def selectColsFromTable(table,pq):
+
+    if "*" in pq.colums:
+        if(pq.colToFunc['*'].upper() != "" and pq.colToFunc['*'].upper() != "COUNT" ):
+            printError("with * no functions can be associated")
+        pq.colums = list(table.keys())
+        for k in table.keys():
+            pq.colToFunc[k] = pq.colToFunc['*']
     if table is None:
         return
     if not pq.isGroupByPresent: 
         #group by is not present
+        print(pq.colums)
         if allColsHaveAggregate(pq):
             ans = defaultdict(list)
             for c in pq.colums:
@@ -381,7 +391,6 @@ def applyDistinct(table,pq):
                 ans[k1].append(table[k1][i])
     return ans
 
-
 def printTable(table):
     if table is None:
         print("Table is empty ")
@@ -403,7 +412,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select distinct A,B,C from a,b,c where F=C or G=16"
+    sqlQuery = "select count(A),F from a,b,c where F=C or G=16 group by F"
 
     pq = parsedQuery(sqlQuery)
 
