@@ -311,7 +311,24 @@ def applyWhereCondition(pq,table):
         return ans
     else:
         printError("Operator not supported " + logicOperator)
-        
+
+def applyGroupBy(pq,table):
+    colToGroup = pq.groupByCol
+    colToSelect = pq.colums
+    if not (colToGroup in table.keys()):
+        printError("Table does not contain col to group by : "+colToGroup)
+    tableLen = len(table[colToGroup])
+    for c in colToSelect: #cheching if all the colums have aggreagte function
+        if c != colToGroup:
+            if(pq.colToFunc[c] == ""):
+                printError("With group by the colum should have an aggregate function "+ c)
+    ans = {}
+    for i in range(tableLen):
+        currValue = table[colToGroup][i]
+        for k in colToSelect:
+            ans[currValue][k].append(table[k][i])
+    print(ans)
+
 def printTable(table):
     if table is None:
         print("Table is empty ")
@@ -333,7 +350,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select A,B,C,D,E,F,G from a,b,c where F=C or G=16 "
+    sqlQuery = "select max(A),max(B),min(C) from a,b,c where F=C or G=16 group by A"
 
     pq = parsedQuery(sqlQuery)
 
@@ -344,9 +361,15 @@ def main():
         printError("One of the col does not exists ")
     
     tablesAfterJoin = joinTables(pq.tables,tablesFromMetaData)
+    currTable = tablesAfterJoin
 
     if(pq.isWherePresent):
         tableAfterWhere = applyWhereCondition(pq,tablesAfterJoin)
+        currTable = tableAfterWhere
+    
+    if(pq.isGroupByPresent):
+        tableAfterGroupBy = applyGroupBy(pq,currTable)
+        currTable = tableAfterGroupBy
 
     tableAfterSelectingCols = selectColsFromTable(tableAfterWhere,pq)
     
