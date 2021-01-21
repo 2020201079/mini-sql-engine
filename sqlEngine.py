@@ -59,6 +59,9 @@ def colExistInMeta(pq,tablesFromMeta):
     colNamesQuery = pq.colums
     for colName in colNamesQuery:
         if(colName.strip() == "*"):
+            for t in tablesFromMeta:
+                for colName in t.attributes:
+                    pq.colToTableName[colName] = t.name
             continue
         found = False
         for t in tablesFromMeta:
@@ -434,7 +437,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select A,sum(C),max(D) from a,b group by A ;"
+    sqlQuery = "select * from a ;"
 
     pq = parsedQuery(sqlQuery)
 
