@@ -9,6 +9,7 @@ def printError(error):
 
 class parsedQuery:
     colToFunc = {}
+    colToTableName = {}
     tables = []
     colums = []
     groupByCol = ""
@@ -23,6 +24,8 @@ class parsedQuery:
     __columNames = ""
     __tableNames = ""
     def __init__(self,query):
+        if(query[-1] != ";"):
+            printError("query should end with a ;")
         tokenList = sqlparse.parse(query)[0].tokens
         self.__checkTokens(tokenList)
         if(tokenList[0].value.upper() != "SELECT" ):

@@ -55,13 +55,15 @@ def tablesExistInMeta(tableNames, tablesFromMeta ):
             return False
     return True
 
-def colExistInMeta(colNamesQuery,tablesFromMeta):
+def colExistInMeta(pq,tablesFromMeta):
+    colNamesQuery = pq.colums
     for colName in colNamesQuery:
         if(colName.strip() == "*"):
             continue
         found = False
         for t in tablesFromMeta:
             if colName in t.attributes:
+                pq.colToTableName[colName] = t.name
                 found = True
                 break
         if(found == False):
@@ -391,7 +393,7 @@ def applyDistinct(table,pq):
                 ans[k1].append(table[k1][i])
     return ans
 
-def printTable(table):
+def printTable(table,pq):
     if table is None:
         print("Table is empty ")
         return
@@ -402,9 +404,9 @@ def printTable(table):
     length = len(table[keys[0]])
     for k in keys:
         if( k != keys[len(keys)-1]):
-            print(k,end=",")
+            print(pq.colToTableName[k]+"."+k,end=",")
         else:
-            print(k)
+            print(pq.colToTableName[k]+"."+k)
     for i in range(length):
         for k in keys:
             if( k != keys[len(keys)-1]):
@@ -423,7 +425,7 @@ def main():
     if not tablesExistInMeta(pq.tables,tablesFromMetaData):
         printError("One of the table does not exists ")
     
-    if not colExistInMeta(pq.colums,tablesFromMetaData):
+    if not colExistInMeta(pq,tablesFromMetaData):
         printError("One of the col does not exists ")
     
     currTable = joinTables(pq.tables,tablesFromMetaData)
@@ -439,7 +441,7 @@ def main():
 
     currTable = applyOrderBy(currTable,pq)
     
-    printTable(currTable)
+    printTable(currTable,pq)
     
 if __name__ == "__main__":
     main()
