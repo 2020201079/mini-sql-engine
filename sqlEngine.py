@@ -436,10 +436,12 @@ def printTable(table,pq):
 def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
-    #sqlQuery = input()
-    sqlQuery = "select * from a ;"
+    if(len(sys.argv) < 2):
+        printError("Query not provided")
+    query = sys.argv[1]
+    #sqlQuery = "select * from a ;"
 
-    pq = parsedQuery(sqlQuery)
+    pq = parsedQuery(query)
 
     if not tablesExistInMeta(pq.tables,tablesFromMetaData):
         printError("One of the table does not exists ")
