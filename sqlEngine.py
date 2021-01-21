@@ -401,18 +401,22 @@ def printTable(table):
         return
     length = len(table[keys[0]])
     for k in keys:
-        print(k,end=" ")
-    print()
+        if( k != keys[len(keys)-1]):
+            print(k,end=",")
+        else:
+            print(k)
     for i in range(length):
         for k in keys:
-            print(table[k][i],end=" ")
-        print()
+            if( k != keys[len(keys)-1]):
+                print(table[k][i],end=",")
+            else:
+                print(table[k][i])
 
 def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select count(A),F from a,b,c where F=C or G=16 group by F"
+    sqlQuery = "select distinct A,C,D from a,b,c order by D"
 
     pq = parsedQuery(sqlQuery)
 
