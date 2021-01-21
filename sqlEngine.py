@@ -152,7 +152,6 @@ def selectColsFromTable(table,pq):
         return
     if not pq.isGroupByPresent: 
         #group by is not present
-        print(pq.colums)
         if allColsHaveAggregate(pq):
             ans = defaultdict(list)
             for c in pq.colums:
@@ -364,13 +363,24 @@ def applyOrderBy(table,pq):
     listOfTuple = []
     for i in range(len(listToSort)):
         listOfTuple.append((listToSort[i],i))
-    listOfTuple.sort()
-    ans = defaultdict(list)
-    for t in listOfTuple:
-        index = t[1]
-        for k in table.keys():
-            ans[k].append(table[k][index])
-    return ans
+    if(pq.orderDir.upper() == "ASC"):
+        listOfTuple.sort()
+        ans = defaultdict(list)
+        for t in listOfTuple:
+            index = t[1]
+            for k in table.keys():
+                ans[k].append(table[k][index])
+        return ans
+    elif(pq.orderDir.upper() == "DESC"):
+        listOfTuple.sort(reverse=True)
+        ans = defaultdict(list)
+        for t in listOfTuple:
+            index = t[1]
+            for k in table.keys():
+                ans[k].append(table[k][index])
+        return ans
+    else:
+        printError("Order by direction is not defined : "+ pq.orderDir)
 
 def applyDistinct(table,pq):
     if (pq.isDistinctPresent == False):
@@ -404,9 +414,15 @@ def printTable(table,pq):
     length = len(table[keys[0]])
     for k in keys:
         if( k != keys[len(keys)-1]):
-            print(pq.colToTableName[k]+"."+k,end=",")
+            if(pq.colToFunc[k] == ""):
+                print((pq.colToTableName[k]+"."+k).lower(),end=",")
+            else:
+                print((pq.colToFunc[k]+'('+pq.colToTableName[k]+"."+k+')'.lower()).lower(),end=",")
         else:
-            print(pq.colToTableName[k]+"."+k)
+            if(pq.colToFunc[k] == ""):
+                print((pq.colToTableName[k]+"."+k).lower())
+            else:
+                print((pq.colToFunc[k]+'('+pq.colToTableName[k]+"."+k+')').lower())
     for i in range(length):
         for k in keys:
             if( k != keys[len(keys)-1]):
@@ -418,7 +434,7 @@ def main():
     tablesFromMetaData = parseMetadataFile("files/metadata.txt")
 
     #sqlQuery = input()
-    sqlQuery = "select distinct A,C,D from a,b,c order by D"
+    sqlQuery = "select A,sum(C),max(D) from a,b group by A ;"
 
     pq = parsedQuery(sqlQuery)
 

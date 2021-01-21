@@ -13,6 +13,8 @@ class parsedQuery:
     tables = []
     colums = []
     groupByCol = ""
+    orderByCol = ""
+    orderDir = "ASC"
     isWherePresent = False
     isSelectPresent = False
     isFromPresent = False
@@ -24,8 +26,10 @@ class parsedQuery:
     __columNames = ""
     __tableNames = ""
     def __init__(self,query):
+        query = query.strip()
         if(query[-1] != ";"):
             printError("query should end with a ;")
+        query = query[:-1]
         tokenList = sqlparse.parse(query)[0].tokens
         self.__checkTokens(tokenList)
         if(tokenList[0].value.upper() != "SELECT" ):
@@ -102,8 +106,19 @@ class parsedQuery:
                         if(len(token.value.split(",")) > 1):
                             printError("Order by is performed by one col only not by "+token.value)
                         if(len(token.value.split(" ")) > 1):
-                            printError("Order by is performed by one col only not by "+token.value)
-                        self.orderByCol = str(token.value)
+                            l = token.value.split(" ")
+                            for s in l:
+                                print(s)
+                            if(token.value.split(" ")[-1].upper() == "DESC"):
+                                self.orderDir = "DESC"
+                                self.orderByCol = str(token.value.split(" ")[0])
+                            elif(token.value.split(" ")[-1].upper() == "ASC"):
+                                self.orderDir = "ASC"
+                                self.orderByCol = str(token.value.split(" ")[0])
+                            else:
+                                printError("Order by is performed by one col only not by "+token.value)
+                        else:
+                            self.orderByCol = str(token.value)
 
     def __isFunc(self,name):
         openbracket = name.find('(')
@@ -128,8 +143,6 @@ class parsedQuery:
             if(n.upper() == name.upper()):
                 return True
         return False
-
-
 
     def __checkTokens(self,tokenList):
         for token in tokenList:
